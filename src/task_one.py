@@ -1,7 +1,6 @@
 import json
 import random
 import datetime
-from time import thread_time
 
 import requests
 from pprint import pprint
@@ -41,13 +40,34 @@ def get_fhir_resource(resource_name):
     url = f'{BASE_URL}/{resource_name}'
     response = requests.get(url=url, headers=get_headers())
     print(response.url)
+    # pprint(response.json())
+
+
+def search_patient_by_name(name_string):
+    url = f'{BASE_URL}/Patient?name={name_string}'
+    response = requests.get(url=url, headers=get_headers())
+    print(response.url)
     pprint(response.json())
+
+
+def get_body_site(concept_id):
+    response = requests.get(f'{BASE_HERMES_URL}/{concept_id}/extended')
+    data = response.json()
+    pprint(data)
+    parent_relationships = data['directParentRelationships']
+    finding_site = parent_relationships['363698007']
+    finding_site_code = finding_site[0]
+    finding_site_description_response = requests.get(f'{BASE_HERMES_URL}/{finding_site_code}/extended')
+    finding_site_data = finding_site_description_response.json()
+    finding_site_description = finding_site_data['preferredDescription']['term']
+    return finding_site_code, finding_site_description
 
 
 def get_fhir_patient(resource_id):
     url = f'{BASE_URL}/Patient/{resource_id}'
     response = requests.get(url=url, headers=get_headers())
     data = response.json()
+    pprint(data)
 
     new_patient_dict['name'][0]['family'] = data['name'][0]['family']
     new_patient_dict['name'][0]['given'] = data['name'][0]['given']
@@ -88,6 +108,7 @@ def get_fhir_patient(resource_id):
 def get_direct_parent(concept_id):
     response = requests.get(f'{BASE_HERMES_URL}/{concept_id}/extended')
     data = response.json()
+    #pprint(data)
     direct_parents = data['directParentRelationships']
     is_a_relation = direct_parents['116680003']
     first_parent_code = is_a_relation[0]
@@ -95,7 +116,6 @@ def get_direct_parent(concept_id):
     concept_description_data = concept_description_response.json()
     preferred_parent_description = concept_description_data['preferredDescription']['term']
     return first_parent_code, preferred_parent_description
-
 
 
 def search_condition(patient_resource_id):
@@ -109,9 +129,23 @@ def search_condition(patient_resource_id):
         parent = get_direct_parent(concept_id=snomed_code)
         parent_code = parent[0]
         parent_description = parent[1]
+        finding = get_body_site(concept_id=snomed_code)
+        site_code = finding[0]
+        site_description = finding[1]
+        print(site_code)
+
         new_condition_dict['code']['coding'][0]['code'] = parent_code
         new_condition_dict['code']['coding'][0]['display'] = parent_description
         new_condition_dict['code']['text'] = parent_description
+        new_condition_dict['bodySite'][0]['coding'][0]['code'] = site_code
+        new_condition_dict['bodySite'][0]['coding'][0]['display'] = site_description
+        new_condition_dict['bodySite'][0]['text'] = site_description
+        #         # new_condition_dict['onsetDateTime']=
+        new_condition_dict['subject']['reference'] = f"Patient/{patient_resource_id}"
+
+        #         # new_condition_dict['onsetDateTime']=
+        new_condition_dict['subject']['reference'] = f"Patient/{patient_resource_id}"
+
         with open(data_dir / 'patient_resource_id.txt', 'r') as f:
             patient_resource_id = f.readline()
         new_condition_dict['subject']['reference'] = f"Patient/{patient_resource_id}"
@@ -135,5 +169,8 @@ def search_condition(patient_resource_id):
 
 
 if __name__ == '__main__':
+    # search_patient_by_name(name_string='Bailey')
+
     get_fhir_patient(resource_id='985ac75c-54cd-47ab-afe1-93d52db5ba48')
     search_condition(patient_resource_id='985ac75c-54cd-47ab-afe1-93d52db5ba48')
+

@@ -135,3 +135,74 @@ new_condition_dict = {
     },
     "onsetDateTime": ""
 }
+
+new_condition_2_dict = {
+    "resourceType": "Condition",
+    "clinicalStatus": {
+        "coding": [
+            {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                "code": "active"
+            }
+        ]
+    },
+    "verificationStatus": {
+        "coding": [
+            {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+                "code": "confirmed"
+            }
+        ]
+    },
+    "category": [
+        {
+            "coding": [
+                {
+                    "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                    "code": "encounter-diagnosis",
+                    "display": "Encounter Diagnosis"
+                },
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "439401001",
+                    "display": "Diagnosis"
+                }
+            ]
+        }
+    ],
+    "severity": {
+        "coding": [
+            {
+                "system": "http://snomed.info/sct",
+                "code": "",
+                "display": ""
+            }
+        ]
+    },
+    "code": {
+        "coding": [
+            {
+                "system": "http://snomed.info/sct",
+                "code": "",
+                "display": ""
+            }
+        ],
+        "text": ""
+    },
+    "bodySite": [
+        {
+            "coding": [
+                {
+                    "system": "http://snomed.info/sct",
+                    "code": "",
+                    "display": ""
+                }
+            ],
+            "text": ""
+        }
+    ],
+    "subject": {
+        "reference": ""
+    },
+    "onsetDateTime": ""
+}
