@@ -36,11 +36,11 @@ def get_headers():
     return headers
 
 
-def get_fhir_resource(resource_name):
-    url = f'{BASE_URL}/{resource_name}'
-    response = requests.get(url=url, headers=get_headers())
-    print(response.url)
-    # pprint(response.json())
+# def get_fhir_resource(resource_name):
+#     url = f'{BASE_URL}/{resource_name}'
+#     response = requests.get(url=url, headers=get_headers())
+#     print(response.url)
+#     # pprint(response.json())
 
 
 def search_patient_by_name(name_string):
@@ -51,14 +51,23 @@ def search_patient_by_name(name_string):
 
 
 def get_body_site(concept_id):
+
+    '''
+    retrieves information about the body site associated with a specific condition from a SNOMED-CT terminology server (Hermes browser).
+    it extracts the preferred term of the finding site using the preferredDescription key.
+    It returns the finding cite code and preferred term description of the finding site.
+
+    '''
     response = requests.get(f'{BASE_HERMES_URL}/{concept_id}/extended')
     data = response.json()
-    pprint(data)
+    #pprint(data)
     parent_relationships = data['directParentRelationships']
     finding_site = parent_relationships['363698007']
     finding_site_code = finding_site[0]
+    #getting the preferred term of the Finding site of the condition
     finding_site_description_response = requests.get(f'{BASE_HERMES_URL}/{finding_site_code}/extended')
     finding_site_data = finding_site_description_response.json()
+    #pprint(finding_site_data)
     finding_site_description = finding_site_data['preferredDescription']['term']
     return finding_site_code, finding_site_description
 
@@ -122,16 +131,17 @@ def search_condition(patient_resource_id):
     url = f'{BASE_URL}/Condition?patient={patient_resource_id}'
     response = requests.get(url=url, headers=get_headers())
     data = response.json()
+    #pprint(data)
     if 'entry' in data:
         conditions = data['entry']
         thirty_condition = conditions[30]
-        snomed_code = thirty_condition['resource']['code']['coding'][0]['code']
-        parent = get_direct_parent(concept_id=snomed_code)
+        snomed_code_30th_cond = thirty_condition['resource']['code']['coding'][0]['code']
+        parent = get_direct_parent(concept_id=snomed_code_30th_cond)
         parent_code = parent[0]
         parent_description = parent[1]
-        finding = get_body_site(concept_id=snomed_code)
-        site_code = finding[0]
-        site_description = finding[1]
+        finding_site = get_body_site(concept_id=snomed_code_30th_cond)
+        site_code = finding_site[0]
+        site_description = finding_site[1]
         print(site_code)
 
         new_condition_dict['code']['coding'][0]['code'] = parent_code

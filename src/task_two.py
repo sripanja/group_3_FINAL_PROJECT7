@@ -1,17 +1,13 @@
 import json
-import random
-import datetime
-from time import thread_time
-
 import requests
 from pprint import pprint
 from pathlib import Path
 from src.registration import data_dir
-from src.data_templates import new_patient_dict, new_condition_dict
+from src.data_templates import new_condition_dict
 
 BASE_URL = "https://in-info-web20.luddy.indianapolis.iu.edu/apis/default/fhir"
 PRIMARY_CARE_SERVER_URL = "http://137.184.71.65:8080/fhir"
-BASE_HERMES_URL = 'http://159.65.173.51:8080/v1/snomed/concepts'
+BASE_HERMES_URL = 'http://159.65.173.51:8080/v1/snomed'
 
 
 def get_access_token_from_file():
@@ -37,20 +33,16 @@ def get_headers():
     return headers
 
 
-def get_fhir_resource(resource_name):
-    url = f'{BASE_URL}/{resource_name}'
-    response = requests.get(url=url, headers=get_headers())
-    print(response.url)
-
-
-def get_fhir_patient(patient_resource_id):
-    url = f'{BASE_URL}/Patient/{patient_resource_id}'
-    response = requests.get(url=url, headers=get_headers())
+def expression_constraint(concept_id):
+    search_string = f"<! {concept_id}"
+    response = requests.get(f'{BASE_HERMES_URL}/search?constraint={search_string}')
     data = response.json()
+    if len(data):
+        first_item_from_results = data[0]
+        first_concept_id = first_item_from_results['conceptId']
+        first_concept_term = first_item_from_results['preferredTerm']
+        return first_concept_id, first_concept_term
 
-
-def child_term(concept_id):
-    return f"<! {concept_id}"
 
 def get_snomed_code(patient_resource_id):
     url = f'{BASE_URL}/Condition?patient={patient_resource_id}'
@@ -60,42 +52,34 @@ def get_snomed_code(patient_resource_id):
         conditions = data['entry']
         thirty_condition = conditions[30]
         snomed_code = thirty_condition['resource']['code']['coding'][0]['code']
-        return (snomed_code)
+        child = expression_constraint(concept_id=snomed_code)
+        child_code = child[0]
+        child_pref_term = child[1]
+
+        new_condition_dict['code']['coding'][0]['code'] = child_code
+        new_condition_dict['code']['coding'][0]['display'] = child_pref_term
+        new_condition_dict['code']['text'] = child_pref_term
+        dummy_patient_id = 3
+        new_condition_dict['subject']['reference'] = f"Patient/{dummy_patient_id}"
+
+        # pprint(new_condition_dict)
+
+        try:
+            headers = {
+                'Accept': "application/json"
+            }
+            url = PRIMARY_CARE_SERVER_URL + '/' + 'Condition'
+            response = requests.post(url=url, json=new_condition_dict, headers=headers)
+            if response.status_code == 200 or response.status_code == 201:
+                response_data = response.json()
+                #pprint(response_data)
+                print('Condition resource created.')
+            else:
+                print(f'Error - {response.status_code}')
+        except Exception as e:
+            print(e)
 
 
-def search_condition(patient_resource_id):
-    url = f'{BASE_URL}/Condition?patient={patient_resource_id}'
-    response = requests.get(url=url, headers=get_headers())
-    data = response.json()
-    pprint (data)
-    snomed = get_snomed_code(patient_resource_id)
-    if 'entry' in data:
-        conditions = data['entry']
-        thirty_condition = conditions[30]
-        snomed_code = thirty_condition['resource']['code']['coding'][0]['code']
-    print(snomed)
-    children = child_term(concept_id=snomed_code)
-    child_code = children[0]
-    print('here')
-    print(child_code)
-
-
-def expression_constraint(search_string):
-    response = requests.get(f'{BASE_HERMES_URL}/search?constraint={search_string}')
-    data = response.json()
-
-    for concept in data:
-        concept_id = concept['conceptId']
-        preferred_term = concept['preferredTerm']
-        term = concept['term']
-        print(f"Concept ID: {concept_id} | Preferred term: {preferred_term} | term: {term}")
-
-
-if __name__ == '_main_':
+if __name__ == '__main__':
     patient_resource_id = '985ac75c-54cd-47ab-afe1-93d52db5ba48'
-    get_snomed_code(patient_resource_id)
-    get_fhir_patient(patient_resource_id)
-    # concept_id=snomed_code
-    string_value = child_term(concept_id).strip()
-    # print()
-    expression_constraint(search_string=string_value)
+    get_snomed_code(patient_resource_id=patient_resource_id)
